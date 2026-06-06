@@ -1,0 +1,1961 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>提词器 - Teleprompter</title>
+    <style>
+        :root {
+            --bg: #f5f5f7;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f0f0f2;
+            --text: #1d1d1f;
+            --text-secondary: #6e6e73;
+            --text-tertiary: #9a9a9f;
+            --border: #e5e5ea;
+            --accent: #0071e3;
+            --accent-hover: #0077ed;
+            --accent-light: #e8f4fd;
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+            --shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.1);
+            --shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.15);
+            --radius-sm: 8px;
+            --radius: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 20px;
+            --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-slow: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            --font-mono: 'SF Mono', 'Cascadia Code', 'Consolas', 'Monaco', monospace;
+        }
+
+        [data-theme="dark"] {
+            --bg: #1c1c1e;
+            --bg-secondary: #2c2c2e;
+            --bg-tertiary: #3a3a3c;
+            --text: #f5f5f7;
+            --text-secondary: #a1a1a6;
+            --text-tertiary: #6e6e73;
+            --border: #3a3a3c;
+            --accent: #0a84ff;
+            --accent-hover: #409cff;
+            --accent-light: #1a3a5c;
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+            --shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.4);
+            --shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-font-smoothing: antialiased;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: background var(--transition-slow), color var(--transition-slow);
+        }
+
+        /* ========== 主容器 ========== */
+        .app-container {
+            width: 100%;
+            height: 100%;
+            max-width: 900px;
+            max-height: 700px;
+            background: var(--bg-secondary);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-xl);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: all var(--transition-slow);
+            position: relative;
+            border: 1px solid var(--border);
+        }
+
+        @media (max-width: 960px) {
+            .app-container {
+                max-width: 100%;
+                max-height: 100%;
+                border-radius: 0;
+                border: none;
+                box-shadow: none;
+            }
+        }
+
+        /* ========== 标题栏 ========== */
+        .titlebar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 16px;
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border);
+            gap: 12px;
+            flex-shrink: 0;
+            -webkit-app-region: drag;
+            transition: background var(--transition-slow), border var(--transition-slow);
+        }
+        .titlebar-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            -webkit-app-region: no-drag;
+        }
+        .titlebar-dot {
+            width: 11px;
+            height: 11px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform var(--transition), opacity var(--transition);
+            flex-shrink: 0;
+        }
+        .titlebar-dot:hover {
+            transform: scale(1.2);
+            opacity: 0.8;
+        }
+        .dot-red {
+            background: #ff5f57;
+        }
+        .dot-yellow {
+            background: #febc2e;
+        }
+        .dot-green {
+            background: #28c840;
+        }
+        .titlebar-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            letter-spacing: 0.3px;
+            -webkit-app-region: drag;
+            transition: color var(--transition-slow);
+        }
+        .titlebar-actions {
+            display: flex;
+            gap: 6px;
+            -webkit-app-region: no-drag;
+        }
+        .titlebar-btn {
+            width: 32px;
+            height: 28px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-radius: 6px;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition);
+        }
+        .titlebar-btn:hover {
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        /* ========== 剪贴板提示条 ========== */
+        .clipboard-toast {
+            position: absolute;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-120px);
+            background: var(--accent);
+            color: #fff;
+            padding: 10px 18px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            z-index: 100;
+            white-space: nowrap;
+            box-shadow: 0 4px 16px rgba(0, 113, 227, 0.35);
+            transition: transform var(--transition-slow);
+            pointer-events: auto;
+            letter-spacing: 0.2px;
+        }
+        .clipboard-toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+        .clipboard-toast:active {
+            transform: translateX(-50%) translateY(0) scale(0.95);
+        }
+
+        /* ========== 主体布局 ========== */
+        .main-body {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* ========== 侧边栏（分组） ========== */
+        .sidebar {
+            width: 180px;
+            background: var(--bg-tertiary);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            transition: all var(--transition-slow);
+            overflow: hidden;
+        }
+        .sidebar-header {
+            padding: 14px 14px 8px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-tertiary);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: color var(--transition-slow);
+        }
+        .sidebar-add-btn {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            border: none;
+            background: var(--bg);
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition);
+            line-height: 1;
+        }
+        .sidebar-add-btn:hover {
+            background: var(--accent);
+            color: #fff;
+            transform: scale(1.05);
+        }
+        .group-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 4px 8px 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .group-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all var(--transition);
+            font-size: 13px;
+            color: var(--text-secondary);
+            position: relative;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .group-item:hover {
+            background: var(--bg);
+            color: var(--text);
+        }
+        .group-item.active {
+            background: var(--bg);
+            color: var(--text);
+            font-weight: 500;
+            box-shadow: var(--shadow-sm);
+        }
+        .group-item .folder-icon {
+            font-size: 15px;
+            flex-shrink: 0;
+        }
+        .group-item .group-count {
+            font-size: 10px;
+            color: var(--text-tertiary);
+            margin-left: auto;
+            flex-shrink: 0;
+            background: var(--bg-tertiary);
+            padding: 2px 7px;
+            border-radius: 10px;
+            font-weight: 500;
+        }
+        .group-item.active .group-count {
+            background: var(--border);
+        }
+        .group-item .group-menu-btn {
+            opacity: 0;
+            flex-shrink: 0;
+            width: 20px;
+            height: 20px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 12px;
+            color: var(--text-tertiary);
+            transition: all var(--transition);
+        }
+        .group-item:hover .group-menu-btn {
+            opacity: 1;
+        }
+        .group-item .group-menu-btn:hover {
+            background: var(--border);
+            color: var(--text);
+        }
+
+        /* ========== 内容区 ========== */
+        .content-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+        .content-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+            flex-wrap: wrap;
+            transition: border var(--transition-slow);
+        }
+        .search-input {
+            flex: 1;
+            min-width: 140px;
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            font-size: 13px;
+            background: var(--bg);
+            color: var(--text);
+            outline: none;
+            transition: all var(--transition);
+            font-family: inherit;
+        }
+        .search-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-light);
+        }
+        .search-input::placeholder {
+            color: var(--text-tertiary);
+        }
+        .toolbar-btn {
+            padding: 7px 13px;
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            background: var(--bg);
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all var(--transition);
+            white-space: nowrap;
+            font-family: inherit;
+            letter-spacing: 0.2px;
+        }
+        .toolbar-btn:hover {
+            background: var(--bg-tertiary);
+            color: var(--text);
+            border-color: var(--text-tertiary);
+        }
+        .toolbar-btn.primary {
+            background: var(--accent);
+            color: #fff;
+            border-color: var(--accent);
+            font-weight: 500;
+        }
+        .toolbar-btn.primary:hover {
+            background: var(--accent-hover);
+            border-color: var(--accent-hover);
+        }
+        .items-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .item-card {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: all var(--transition);
+            border: 1px solid transparent;
+            position: relative;
+            background: var(--bg);
+        }
+        .item-card:hover {
+            border-color: var(--border);
+            box-shadow: var(--shadow);
+        }
+        .item-card.dragging {
+            opacity: 0.5;
+            border-color: var(--accent);
+            box-shadow: var(--shadow-lg);
+        }
+        .item-card .drag-handle {
+            cursor: grab;
+            color: var(--text-tertiary);
+            font-size: 14px;
+            flex-shrink: 0;
+            padding: 2px;
+            transition: color var(--transition);
+        }
+        .item-card .drag-handle:active {
+            cursor: grabbing;
+        }
+        .item-card .item-index {
+            font-size: 10px;
+            color: var(--text-tertiary);
+            width: 20px;
+            text-align: center;
+            flex-shrink: 0;
+            font-weight: 500;
+        }
+        .item-card .item-text-preview {
+            flex: 1;
+            font-size: 13px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            color: var(--text);
+            transition: color var(--transition-slow);
+        }
+        .item-card .item-actions {
+            display: flex;
+            gap: 4px;
+            opacity: 0;
+            transition: opacity var(--transition);
+            flex-shrink: 0;
+        }
+        .item-card:hover .item-actions {
+            opacity: 1;
+        }
+        .item-action-btn {
+            width: 26px;
+            height: 26px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            border-radius: 50%;
+            font-size: 13px;
+            color: var(--text-tertiary);
+            transition: all var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .item-action-btn:hover {
+            background: var(--bg-tertiary);
+            color: var(--text);
+        }
+        .item-action-btn.danger:hover {
+            background: #ffebee;
+            color: #e53935;
+        }
+        [data-theme="dark"] .item-action-btn.danger:hover {
+            background: #3d1a1a;
+            color: #ff6b6b;
+        }
+        .empty-state {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-tertiary);
+            gap: 10px;
+            font-size: 13px;
+            padding: 40px;
+            text-align: center;
+            transition: color var(--transition-slow);
+        }
+        .empty-state .empty-icon {
+            font-size: 42px;
+            opacity: 0.5;
+        }
+        .empty-state p {
+            line-height: 1.6;
+        }
+        .empty-state .hint {
+            font-size: 11px;
+            opacity: 0.6;
+        }
+
+        /* ========== 提词模式覆盖层 ========== */
+        .teleprompter-overlay {
+            position: absolute;
+            inset: 0;
+            background: #000;
+            z-index: 50;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity var(--transition-slow), visibility var(--transition-slow);
+            opacity: 0;
+            visibility: hidden;
+            border-radius: var(--radius-xl);
+        }
+        .teleprompter-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        .teleprompter-content {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 40px 60px;
+            overflow: hidden;
+            position: relative;
+        }
+        .teleprompter-text {
+            font-size: 48px;
+            font-weight: 600;
+            color: #fff;
+            text-align: center;
+            line-height: 1.5;
+            max-height: 100%;
+            overflow-y: auto;
+            width: 100%;
+            letter-spacing: 1px;
+            transition: font-size 0.3s;
+            scroll-behavior: auto;
+            padding: 20px 0;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        .teleprompter-text::-webkit-scrollbar {
+            display: none;
+        }
+        .teleprompter-controls {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px 24px;
+            background: rgba(30, 30, 30, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 28px;
+            margin-bottom: 24px;
+            flex-shrink: 0;
+            z-index: 51;
+            transition: opacity 0.3s;
+        }
+        .teleprompter-controls.hidden {
+            opacity: 0.15;
+        }
+        .teleprompter-controls:hover {
+            opacity: 1;
+        }
+        .tp-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 1.5px solid rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+            cursor: pointer;
+            font-size: 17px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition);
+            flex-shrink: 0;
+        }
+        .tp-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.6);
+            transform: scale(1.05);
+        }
+        .tp-btn.play-btn {
+            width: 48px;
+            height: 48px;
+            font-size: 20px;
+            background: #fff;
+            color: #000;
+            border: none;
+            font-weight: bold;
+        }
+        .tp-btn.play-btn:hover {
+            background: #e0e0e0;
+            transform: scale(1.08);
+        }
+        .tp-btn.play-btn.playing {
+            background: #ff5f57;
+            color: #fff;
+        }
+        .tp-speed-slider {
+            -webkit-appearance: none;
+            width: 80px;
+            height: 4px;
+            border-radius: 2px;
+            background: rgba(255, 255, 255, 0.3);
+            outline: none;
+            cursor: pointer;
+        }
+        .tp-speed-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+        }
+        .tp-speed-label {
+            color: #fff;
+            font-size: 11px;
+            font-weight: 500;
+            min-width: 36px;
+            text-align: center;
+            letter-spacing: 0.3px;
+        }
+        .tp-close-btn {
+            position: absolute;
+            top: 16px;
+            right: 20px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            cursor: pointer;
+            font-size: 18px;
+            z-index: 52;
+            transition: all var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .tp-close-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: scale(1.08);
+        }
+        .tp-fs-btn {
+            position: absolute;
+            top: 16px;
+            right: 64px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            cursor: pointer;
+            font-size: 16px;
+            z-index: 52;
+            transition: all var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .tp-fs-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: scale(1.08);
+        }
+
+        /* ========== 编辑弹窗 ========== */
+        .modal-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 80;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: all var(--transition-slow);
+            border-radius: var(--radius-xl);
+        }
+        .modal-backdrop.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-lg);
+            padding: 20px 24px;
+            width: 90%;
+            max-width: 460px;
+            box-shadow: var(--shadow-xl);
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            border: 1px solid var(--border);
+            transition: background var(--transition-slow), border var(--transition-slow);
+        }
+        .modal h3 {
+            font-size: 16px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+        }
+        .modal textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font-size: 14px;
+            font-family: inherit;
+            resize: vertical;
+            background: var(--bg);
+            color: var(--text);
+            outline: none;
+            transition: all var(--transition);
+            line-height: 1.6;
+        }
+        .modal textarea:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-light);
+        }
+        .modal input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            font-family: inherit;
+            background: var(--bg);
+            color: var(--text);
+            outline: none;
+            transition: all var(--transition);
+        }
+        .modal input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-light);
+        }
+        .modal-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+        .modal-btn {
+            padding: 8px 18px;
+            border-radius: 18px;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            color: var(--text);
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all var(--transition);
+            font-family: inherit;
+        }
+        .modal-btn:hover {
+            background: var(--bg-tertiary);
+        }
+        .modal-btn.primary {
+            background: var(--accent);
+            color: #fff;
+            border-color: var(--accent);
+        }
+        .modal-btn.primary:hover {
+            background: var(--accent-hover);
+        }
+        .modal-btn.danger {
+            color: #e53935;
+            border-color: #e53935;
+            background: transparent;
+        }
+        .modal-btn.danger:hover {
+            background: #ffebee;
+        }
+        [data-theme="dark"] .modal-btn.danger:hover {
+            background: #3d1a1a;
+        }
+
+        /* ========== 设置面板 ========== */
+        .settings-panel {
+            position: absolute;
+            right: 12px;
+            top: 55px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 16px 18px;
+            z-index: 70;
+            box-shadow: var(--shadow-lg);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            min-width: 200px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-8px);
+            transition: all var(--transition-slow);
+        }
+        .settings-panel.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+        .settings-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            letter-spacing: 0.2px;
+        }
+        .settings-row label {
+            flex-shrink: 0;
+        }
+        .settings-row input[type="range"] {
+            flex: 1;
+            -webkit-appearance: none;
+            height: 4px;
+            border-radius: 2px;
+            background: var(--border);
+            outline: none;
+            cursor: pointer;
+        }
+        .settings-row input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+            border: 2px solid var(--bg-secondary);
+            box-shadow: var(--shadow-sm);
+        }
+        .settings-row .val {
+            font-size: 11px;
+            min-width: 28px;
+            text-align: right;
+            color: var(--text);
+            font-weight: 600;
+        }
+        .switch {
+            position: relative;
+            width: 42px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .switch .slider {
+            position: absolute;
+            cursor: pointer;
+            inset: 0;
+            background: var(--border);
+            border-radius: 24px;
+            transition: var(--transition);
+        }
+        .switch .slider::before {
+            content: '';
+            position: absolute;
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background: #fff;
+            border-radius: 50%;
+            transition: var(--transition);
+            box-shadow: var(--shadow-sm);
+        }
+        .switch input:checked+.slider {
+            background: var(--accent);
+        }
+        .switch input:checked+.slider::before {
+            transform: translateX(18px);
+        }
+
+        /* ========== 滚动条 ========== */
+        ::-webkit-scrollbar {
+            width: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-tertiary);
+        }
+
+        /* ========== 响应式 ========== */
+        @media (max-width: 640px) {
+            .sidebar {
+                width: 130px;
+            }
+            .group-item {
+                font-size: 11px;
+                padding: 8px 10px;
+            }
+            .item-card {
+                padding: 8px 10px;
+            }
+            .item-card .item-text-preview {
+                font-size: 12px;
+            }
+            .teleprompter-text {
+                font-size: 28px;
+                padding: 10px 20px;
+            }
+            .teleprompter-controls {
+                gap: 8px;
+                padding: 10px 16px;
+                border-radius: 22px;
+            }
+            .tp-btn {
+                width: 32px;
+                height: 32px;
+                font-size: 14px;
+            }
+            .tp-btn.play-btn {
+                width: 38px;
+                height: 38px;
+                font-size: 16px;
+            }
+            .tp-speed-slider {
+                width: 50px;
+            }
+        }
+    </style>
+</head>
+<body data-theme="light">
+
+    <div class="app-container" id="appContainer">
+        <!-- ===== 标题栏 ===== -->
+        <div class="titlebar" id="titlebar">
+            <div class="titlebar-left">
+                <span class="titlebar-dot dot-red" title="关闭" onclick="window.close()"></span>
+                <span class="titlebar-dot dot-yellow" title="最小化"></span>
+                <span class="titlebar-dot dot-green" title="全屏" onclick="toggleFullscreen()"></span>
+            </div>
+            <span class="titlebar-title">📝 提词器</span>
+            <div class="titlebar-actions">
+                <button class="titlebar-btn" title="设置" onclick="toggleSettings()">⚙️</button>
+                <button class="titlebar-btn" title="切换主题" onclick="toggleTheme()">🌓</button>
+            </div>
+        </div>
+
+        <!-- ===== 剪贴板提示 ===== -->
+        <div class="clipboard-toast" id="clipboardToast" onclick="quickAddFromClipboard()">
+            📋 检测到剪贴板内容，点击添加
+        </div>
+
+        <!-- ===== 设置面板 ===== -->
+        <div class="settings-panel" id="settingsPanel">
+            <div class="settings-row">
+                <label>字体大小</label>
+                <input type="range" min="20" max="100" value="48" id="fontSizeSlider" oninput="updateSetting('fontSize', this.value)">
+                <span class="val" id="fontSizeVal">48</span>
+            </div>
+            <div class="settings-row">
+                <label>滚动速度</label>
+                <input type="range" min="1" max="20" value="6" id="scrollSpeedSlider" oninput="updateSetting('scrollSpeed', this.value)">
+                <span class="val" id="scrollSpeedVal">6</span>
+            </div>
+            <div class="settings-row">
+                <label>界面透明度</label>
+                <input type="range" min="60" max="100" value="100" id="opacitySlider" oninput="updateSetting('opacity', this.value)">
+                <span class="val" id="opacityVal">100%</span>
+            </div>
+            <div class="settings-row">
+                <label>自动捕获剪贴板</label>
+                <label class="switch">
+                    <input type="checkbox" id="autoClipboardToggle" onchange="updateSetting('autoClipboard', this.checked)" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div class="settings-row">
+                <label>暗色模式</label>
+                <label class="switch">
+                    <input type="checkbox" id="themeToggle" onchange="toggleTheme()">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <button class="modal-btn" style="width:100%;margin-top:4px;" onclick="exportData()">📤 导出数据</button>
+            <button class="modal-btn" style="width:100%;" onclick="importDataPrompt()">📥 导入数据</button>
+            <button class="modal-btn danger" style="width:100%;" onclick="clearAllData()">🗑️ 清空所有数据</button>
+        </div>
+
+        <!-- ===== 主体 ===== -->
+        <div class="main-body">
+            <!-- 侧边栏 -->
+            <div class="sidebar">
+                <div class="sidebar-header">
+                    分组
+                    <button class="sidebar-add-btn" onclick="addGroup()" title="新建分组">+</button>
+                </div>
+                <div class="group-list" id="groupList">
+                    <!-- 动态渲染 -->
+                </div>
+            </div>
+
+            <!-- 内容区 -->
+            <div class="content-area" id="contentArea">
+                <div class="content-toolbar">
+                    <input type="text" class="search-input" id="searchInput" placeholder="🔍 搜索提词内容..." oninput="renderItems()">
+                    <button class="toolbar-btn" onclick="manualAddItem()" title="手动添加提词内容">＋ 添加</button>
+                    <button class="toolbar-btn primary" onclick="startTeleprompter()" title="开始提词播放">▶ 提词</button>
+                    <button class="toolbar-btn" onclick="captureClipboard()" title="从剪贴板捕获">📋 捕获</button>
+                </div>
+                <div class="items-list" id="itemsList">
+                    <!-- 动态渲染 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== 提词模式覆盖层 ===== -->
+        <div class="teleprompter-overlay" id="teleprompterOverlay">
+            <button class="tp-close-btn" onclick="stopTeleprompter()" title="退出提词模式">✕</button>
+            <button class="tp-fs-btn" onclick="toggleFullscreen()" title="全屏">⛶</button>
+            <div class="teleprompter-content" id="teleprompterContent">
+                <div class="teleprompter-text" id="teleprompterText"></div>
+            </div>
+            <div class="teleprompter-controls" id="teleprompterControls">
+                <button class="tp-btn" onclick="tpPrevItem()" title="上一条">⏮</button>
+                <button class="tp-btn play-btn" id="tpPlayBtn" onclick="tpTogglePlay()" title="播放/暂停">▶</button>
+                <button class="tp-btn" onclick="tpNextItem()" title="下一条">⏭</button>
+                <button class="tp-btn" onclick="tpFontSmaller()" title="缩小字体">A-</button>
+                <button class="tp-btn" onclick="tpFontLarger()" title="放大字体">A+</button>
+                <span class="tp-speed-label" id="tpSpeedLabel">速度 6</span>
+                <input type="range" class="tp-speed-slider" min="1" max="20" value="6" id="tpSpeedSlider" oninput="tpUpdateSpeed(this.value)" title="滚动速度">
+                <button class="tp-btn" onclick="tpResetScroll()" title="回到开头">↺</button>
+            </div>
+        </div>
+
+        <!-- ===== 编辑弹窗 ===== -->
+        <div class="modal-backdrop" id="modalBackdrop" onclick="closeModal()">
+            <div class="modal" id="modalContent" onclick="event.stopPropagation()">
+                <h3 id="modalTitle">编辑</h3>
+                <textarea id="modalTextarea" placeholder="输入提词内容..."></textarea>
+                <input type="text" id="modalGroupSelect" placeholder="移动到分组（留空则保持当前分组）" style="display:none;">
+                <div class="modal-actions">
+                    <button class="modal-btn" onclick="closeModal()">取消</button>
+                    <button class="modal-btn danger" id="modalDeleteBtn" style="display:none;" onclick="modalDelete()">删除</button>
+                    <button class="modal-btn primary" id="modalSaveBtn" onclick="modalSave()">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // ==================== 数据管理 ====================
+            const STORAGE_KEY = 'teleprompter_data';
+            const SETTINGS_KEY = 'teleprompter_settings';
+
+            let appData = {
+                groups: [
+                    { id: 'default', name: '默认分组', items: [] }
+                ],
+                currentGroupId: 'default',
+            };
+
+            let settings = {
+                fontSize: 48,
+                scrollSpeed: 6,
+                opacity: 100,
+                autoClipboard: true,
+                theme: 'light',
+            };
+
+            // 加载数据
+            function loadData() {
+                try {
+                    const saved = localStorage.getItem(STORAGE_KEY);
+                    if (saved) {
+                        const parsed = JSON.parse(saved);
+                        if (parsed.groups && Array.isArray(parsed.groups)) {
+                            appData.groups = parsed.groups;
+                        }
+                        if (parsed.currentGroupId && appData.groups.find(g => g.id === parsed.currentGroupId)) {
+                            appData.currentGroupId = parsed.currentGroupId;
+                        } else if (appData.groups.length > 0) {
+                            appData.currentGroupId = appData.groups[0].id;
+                        }
+                    }
+                } catch (e) {
+                    console.warn('数据加载失败，使用默认数据');
+                }
+                // 确保至少有一个分组
+                if (appData.groups.length === 0) {
+                    appData.groups = [{ id: 'default', name: '默认分组', items: [] }];
+                    appData.currentGroupId = 'default';
+                }
+            }
+
+            function saveData() {
+                try {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+                } catch (e) {
+                    console.warn('数据保存失败');
+                }
+            }
+
+            function loadSettings() {
+                try {
+                    const saved = localStorage.getItem(SETTINGS_KEY);
+                    if (saved) {
+                        const parsed = JSON.parse(saved);
+                        settings = { ...settings, ...parsed };
+                    }
+                } catch (e) {
+                    console.warn('设置加载失败');
+                }
+                applySettings();
+            }
+
+            function saveSettings() {
+                try {
+                    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+                } catch (e) {
+                    console.warn('设置保存失败');
+                }
+                applySettings();
+            }
+
+            function applySettings() {
+                document.body.setAttribute('data-theme', settings.theme);
+                document.getElementById('themeToggle').checked = settings.theme === 'dark';
+                document.getElementById('fontSizeSlider').value = settings.fontSize;
+                document.getElementById('fontSizeVal').textContent = settings.fontSize;
+                document.getElementById('scrollSpeedSlider').value = settings.scrollSpeed;
+                document.getElementById('scrollSpeedVal').textContent = settings.scrollSpeed;
+                document.getElementById('opacitySlider').value = settings.opacity;
+                document.getElementById('opacityVal').textContent = settings.opacity + '%';
+                document.getElementById('autoClipboardToggle').checked = settings.autoClipboard;
+                document.getElementById('tpSpeedSlider').value = settings.scrollSpeed;
+                document.getElementById('tpSpeedLabel').textContent = '速度 ' + settings.scrollSpeed;
+                document.getElementById('appContainer').style.opacity = settings.opacity / 100;
+                // 提词器字体
+                document.getElementById('teleprompterText').style.fontSize = settings.fontSize + 'px';
+            }
+
+            // ==================== 工具函数 ====================
+            function generateId() {
+                return 'id_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8);
+            }
+
+            function getCurrentGroup() {
+                return appData.groups.find(g => g.id === appData.currentGroupId) || appData.groups[0];
+            }
+
+            function getCurrentItems() {
+                const group = getCurrentGroup();
+                if (!group) return [];
+                const searchTerm = document.getElementById('searchInput')?.value?.trim().toLowerCase() || '';
+                if (!searchTerm) return group.items;
+                return group.items.filter(item => item.text.toLowerCase().includes(searchTerm));
+            }
+
+            // ==================== 渲染 ====================
+            function renderGroups() {
+                const container = document.getElementById('groupList');
+                if (!container) return;
+                container.innerHTML = appData.groups.map(group => `
+                    <div class="group-item ${group.id === appData.currentGroupId ? 'active' : ''}"
+                         onclick="selectGroup('${group.id}')"
+                         draggable="true"
+                         data-group-id="${group.id}"
+                         ondragstart="handleGroupDragStart(event, '${group.id}')"
+                         ondragover="handleGroupDragOver(event)"
+                         ondragleave="handleGroupDragLeave(event)"
+                         ondrop="handleGroupDrop(event, '${group.id}')"
+                         title="${group.name}">
+                        <span class="folder-icon">📁</span>
+                        <span>${escapeHtml(group.name)}</span>
+                        <span class="group-count">${group.items.length}</span>
+                        <button class="group-menu-btn" onclick="event.stopPropagation();renameGroup('${group.id}')" title="重命名">⋯</button>
+                    </div>
+                `).join('');
+            }
+
+            function renderItems() {
+                const container = document.getElementById('itemsList');
+                const items = getCurrentItems();
+                const group = getCurrentGroup();
+
+                if (!container) return;
+
+                if (!group || items.length === 0) {
+                    const searchTerm = document.getElementById('searchInput')?.value?.trim() || '';
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <span class="empty-icon">${searchTerm ? '🔍' : '📄'}</span>
+                            <p>${searchTerm ? '没有匹配的内容' : '还没有提词内容'}</p>
+                            <span class="hint">${searchTerm ? '尝试其他关键词' : '复制文本后点击「捕获」或直接 Ctrl+V 粘贴<br>也可以点击「＋ 添加」手动输入'}</span>
+                        </div>`;
+                    return;
+                }
+
+                container.innerHTML = items.map((item, index) => `
+                    <div class="item-card"
+                         draggable="true"
+                         data-item-id="${item.id}"
+                         ondragstart="handleItemDragStart(event, '${item.id}')"
+                         ondragover="handleItemDragOver(event)"
+                         ondragleave="handleItemDragLeave(event)"
+                         ondrop="handleItemDrop(event, '${item.id}')"
+                         ondblclick="editItem('${item.id}')">
+                        <span class="drag-handle" title="拖拽排序">⋮⋮</span>
+                        <span class="item-index">${index + 1}</span>
+                        <span class="item-text-preview" title="${escapeHtml(item.text)}">${escapeHtml(item.text.substring(0, 80))}${item.text.length > 80 ? '...' : ''}</span>
+                        <div class="item-actions">
+                            <button class="item-action-btn" onclick="event.stopPropagation();startSingleTeleprompter('${item.id}')" title="单独提词">▶</button>
+                            <button class="item-action-btn" onclick="event.stopPropagation();editItem('${item.id}')" title="编辑">✎</button>
+                            <button class="item-action-btn danger" onclick="event.stopPropagation();deleteItem('${item.id}')" title="删除">🗑</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            function escapeHtml(str) {
+                const div = document.createElement('div');
+                div.textContent = str;
+                return div.innerHTML;
+            }
+
+            function renderAll() {
+                renderGroups();
+                renderItems();
+            }
+
+            // ==================== 分组操作 ====================
+            window.selectGroup = function(groupId) {
+                appData.currentGroupId = groupId;
+                saveData();
+                renderAll();
+                document.getElementById('searchInput').value = '';
+            };
+
+            window.addGroup = function() {
+                const name = prompt('请输入分组名称：', '新分组');
+                if (!name || !name.trim()) return;
+                const newGroup = {
+                    id: generateId(),
+                    name: name.trim(),
+                    items: []
+                };
+                appData.groups.push(newGroup);
+                appData.currentGroupId = newGroup.id;
+                saveData();
+                renderAll();
+            };
+
+            window.renameGroup = function(groupId) {
+                const group = appData.groups.find(g => g.id === groupId);
+                if (!group) return;
+                const newName = prompt('重命名分组：', group.name);
+                if (!newName || !newName.trim()) return;
+                group.name = newName.trim();
+                saveData();
+                renderAll();
+            };
+
+            window.deleteGroup = function(groupId) {
+                if (appData.groups.length <= 1) {
+                    alert('至少保留一个分组');
+                    return;
+                }
+                const group = appData.groups.find(g => g.id === groupId);
+                if (!group) return;
+                if (!confirm(`确定删除分组「${group.name}」及其所有内容吗？`)) return;
+                appData.groups = appData.groups.filter(g => g.id !== groupId);
+                if (appData.currentGroupId === groupId) {
+                    appData.currentGroupId = appData.groups[0].id;
+                }
+                saveData();
+                renderAll();
+            };
+
+            // 分组拖拽排序
+            window.handleGroupDragStart = function(e, groupId) {
+                e.dataTransfer.setData('text/plain', 'group:' + groupId);
+                e.dataTransfer.effectAllowed = 'move';
+                e.target.style.opacity = '0.5';
+            };
+            window.handleGroupDragOver = function(e) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                e.target.closest('.group-item')?.classList.add('dragging');
+            };
+            window.handleGroupDragLeave = function(e) {
+                e.target.closest('.group-item')?.classList.remove('dragging');
+            };
+            window.handleGroupDrop = function(e, targetGroupId) {
+                e.preventDefault();
+                document.querySelectorAll('.group-item').forEach(el => el.classList.remove('dragging',
+                    'dragging'));
+                const dragData = e.dataTransfer.getData('text/plain');
+                if (dragData.startsWith('group:')) {
+                    const srcGroupId = dragData.replace('group:', '');
+                    if (srcGroupId !== targetGroupId) {
+                        const srcIndex = appData.groups.findIndex(g => g.id === srcGroupId);
+                        const targetIndex = appData.groups.findIndex(g => g.id === targetGroupId);
+                        if (srcIndex >= 0 && targetIndex >= 0) {
+                            const [moved] = appData.groups.splice(srcIndex, 1);
+                            appData.groups.splice(targetIndex, 0, moved);
+                            saveData();
+                            renderAll();
+                        }
+                    }
+                }
+            };
+
+            // ==================== 条目操作 ====================
+            window.addItem = function(text, groupId) {
+                const targetGroupId = groupId || appData.currentGroupId;
+                const group = appData.groups.find(g => g.id === targetGroupId);
+                if (!group) return;
+                const newItem = {
+                    id: generateId(),
+                    text: text.trim(),
+                    createdAt: Date.now(),
+                };
+                group.items.push(newItem);
+                saveData();
+                renderAll();
+                return newItem;
+            };
+
+            window.editItem = function(itemId) {
+                const group = getCurrentGroup();
+                if (!group) return;
+                const item = group.items.find(i => i.id === itemId);
+                if (!item) return;
+                openModal('edit', item);
+            };
+
+            window.deleteItem = function(itemId) {
+                if (!confirm('确定删除这条提词内容吗？')) return;
+                const group = getCurrentGroup();
+                if (!group) return;
+                group.items = group.items.filter(i => i.id !== itemId);
+                saveData();
+                renderAll();
+            };
+
+            window.manualAddItem = function() {
+                openModal('add', null);
+            };
+
+            // 条目拖拽排序
+            window.handleItemDragStart = function(e, itemId) {
+                e.dataTransfer.setData('text/plain', 'item:' + itemId);
+                e.dataTransfer.effectAllowed = 'move';
+                e.target.closest('.item-card')?.classList.add('dragging');
+            };
+            window.handleItemDragOver = function(e) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+            };
+            window.handleItemDragLeave = function(e) {
+                e.target.closest('.item-card')?.classList.remove('dragging');
+            };
+            window.handleItemDrop = function(e, targetItemId) {
+                e.preventDefault();
+                document.querySelectorAll('.item-card').forEach(el => el.classList.remove('dragging'));
+                const dragData = e.dataTransfer.getData('text/plain');
+                if (dragData.startsWith('item:')) {
+                    const srcItemId = dragData.replace('item:', '');
+                    if (srcItemId !== targetItemId) {
+                        const group = getCurrentGroup();
+                        if (!group) return;
+                        const srcIndex = group.items.findIndex(i => i.id === srcItemId);
+                        const targetIndex = group.items.findIndex(i => i.id === targetItemId);
+                        if (srcIndex >= 0 && targetIndex >= 0) {
+                            const [moved] = group.items.splice(srcIndex, 1);
+                            group.items.splice(targetIndex, 0, moved);
+                            saveData();
+                            renderAll();
+                        }
+                    }
+                }
+                // 也支持从其他分组拖过来
+                if (dragData.startsWith('group:')) {
+                    // 这里可以扩展：将分组内的所有条目移动到目标位置
+                }
+            };
+
+            // ==================== 剪贴板 ====================
+            let lastClipboardText = '';
+            let clipboardCheckInterval = null;
+
+            async function checkClipboard() {
+                if (!settings.autoClipboard) return;
+                try {
+                    if (navigator.clipboard && navigator.clipboard.readText) {
+                        const text = await navigator.clipboard.readText();
+                        if (text && text.trim() && text.trim() !== lastClipboardText && text.trim().length > 1) {
+                            lastClipboardText = text.trim();
+                            showClipboardToast();
+                        }
+                    }
+                } catch (e) {
+                    // 权限不足，静默处理
+                }
+            }
+
+            function showClipboardToast() {
+                const toast = document.getElementById('clipboardToast');
+                if (!toast) return;
+                toast.classList.add('show');
+                clearTimeout(toast._timeout);
+                toast._timeout = setTimeout(() => {
+                    toast.classList.remove('show');
+                }, 4000);
+            }
+
+            window.quickAddFromClipboard = async function() {
+                try {
+                    let text = '';
+                    if (navigator.clipboard && navigator.clipboard.readText) {
+                        text = await navigator.clipboard.readText();
+                    }
+                    if (!text || !text.trim()) {
+                        alert('剪贴板为空或无法读取');
+                        return;
+                    }
+                    window.addItem(text.trim());
+                    document.getElementById('clipboardToast').classList.remove('show');
+                    lastClipboardText = text.trim();
+                } catch (e) {
+                    alert('无法读取剪贴板，请使用「捕获」按钮或 Ctrl+V');
+                }
+            };
+
+            window.captureClipboard = async function() {
+                await window.quickAddFromClipboard();
+            };
+
+            // 监听粘贴事件
+            document.addEventListener('paste', function(e) {
+                const text = e.clipboardData?.getData('text/plain');
+                if (text && text.trim()) {
+                    // 如果焦点不在输入框或文本区域，则自动添加
+                    const activeEl = document.activeElement;
+                    if (!activeEl || (activeEl.tagName !== 'INPUT' && activeEl.tagName !== 'TEXTAREA')) {
+                        e.preventDefault();
+                        window.addItem(text.trim());
+                        lastClipboardText = text.trim();
+                    }
+                }
+            });
+
+            // 窗口获得焦点时检查剪贴板
+            window.addEventListener('focus', () => {
+                setTimeout(checkClipboard, 300);
+            });
+
+            // 定期检查剪贴板
+            clipboardCheckInterval = setInterval(checkClipboard, 2000);
+
+            // ==================== 弹窗 ====================
+            let modalMode = null; // 'add' | 'edit'
+            let modalItemId = null;
+
+            function openModal(mode, item) {
+                modalMode = mode;
+                const backdrop = document.getElementById('modalBackdrop');
+                const title = document.getElementById('modalTitle');
+                const textarea = document.getElementById('modalTextarea');
+                const deleteBtn = document.getElementById('modalDeleteBtn');
+                const groupSelect = document.getElementById('modalGroupSelect');
+
+                if (mode === 'add') {
+                    title.textContent = '添加提词内容';
+                    textarea.value = '';
+                    deleteBtn.style.display = 'none';
+                    modalItemId = null;
+                    groupSelect.style.display = 'none';
+                } else if (mode === 'edit' && item) {
+                    title.textContent = '编辑提词内容';
+                    textarea.value = item.text;
+                    deleteBtn.style.display = 'inline-block';
+                    modalItemId = item.id;
+                    groupSelect.style.display = 'none';
+                }
+
+                backdrop.classList.add('active');
+                setTimeout(() => textarea.focus(), 150);
+            }
+
+            window.closeModal = function() {
+                document.getElementById('modalBackdrop').classList.remove('active');
+                modalMode = null;
+                modalItemId = null;
+            };
+
+            window.modalSave = function() {
+                const textarea = document.getElementById('modalTextarea');
+                const text = textarea.value.trim();
+                if (!text) {
+                    alert('请输入内容');
+                    return;
+                }
+
+                if (modalMode === 'add') {
+                    window.addItem(text);
+                } else if (modalMode === 'edit' && modalItemId) {
+                    const group = getCurrentGroup();
+                    if (group) {
+                        const item = group.items.find(i => i.id === modalItemId);
+                        if (item) {
+                            item.text = text;
+                            saveData();
+                            renderAll();
+                        }
+                    }
+                }
+
+                window.closeModal();
+            };
+
+            window.modalDelete = function() {
+                if (modalItemId && confirm('确定删除这条内容吗？')) {
+                    window.deleteItem(modalItemId);
+                    window.closeModal();
+                }
+            };
+
+            // ESC 关闭弹窗
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    const backdrop = document.getElementById('modalBackdrop');
+                    if (backdrop.classList.contains('active')) {
+                        window.closeModal();
+                        return;
+                    }
+                    // 也关闭提词模式
+                    const overlay = document.getElementById('teleprompterOverlay');
+                    if (overlay.classList.contains('active')) {
+                        stopTeleprompter();
+                    }
+                }
+            });
+
+            // ==================== 设置 ====================
+            window.toggleSettings = function() {
+                const panel = document.getElementById('settingsPanel');
+                panel.classList.toggle('active');
+            };
+
+            window.updateSetting = function(key, value) {
+                if (key === 'fontSize') {
+                    settings.fontSize = parseInt(value);
+                } else if (key === 'scrollSpeed') {
+                    settings.scrollSpeed = parseInt(value);
+                } else if (key === 'opacity') {
+                    settings.opacity = parseInt(value);
+                } else if (key === 'autoClipboard') {
+                    settings.autoClipboard = value === true || value === 'true';
+                }
+                saveSettings();
+                if (key === 'scrollSpeed') {
+                    document.getElementById('tpSpeedSlider').value = settings.scrollSpeed;
+                    document.getElementById('tpSpeedLabel').textContent = '速度 ' + settings.scrollSpeed;
+                }
+            };
+
+            window.toggleTheme = function() {
+                settings.theme = settings.theme === 'light' ? 'dark' : 'light';
+                saveSettings();
+            };
+
+            // 点击其他地方关闭设置面板
+            document.addEventListener('click', function(e) {
+                const panel = document.getElementById('settingsPanel');
+                const settingsBtn = document.querySelector('.titlebar-btn[title="设置"]');
+                if (panel.classList.contains('active') &&
+                    !panel.contains(e.target) &&
+                    !settingsBtn.contains(e.target)) {
+                    panel.classList.remove('active');
+                }
+            });
+
+            // ==================== 提词模式 ====================
+            let tpCurrentItemIndex = 0;
+            let tpIsPlaying = false;
+            let tpScrollInterval = null;
+            let tpItems = [];
+
+            function getTeleprompterItems() {
+                // 获取当前分组的所有条目（忽略搜索过滤）
+                const group = getCurrentGroup();
+                return group ? [...group.items] : [];
+            }
+
+            window.startTeleprompter = function() {
+                tpItems = getTeleprompterItems();
+                if (tpItems.length === 0) {
+                    alert('当前分组没有提词内容，请先添加');
+                    return;
+                }
+                tpCurrentItemIndex = 0;
+                const overlay = document.getElementById('teleprompterOverlay');
+                overlay.classList.add('active');
+                updateTeleprompterContent();
+                updateTeleprompterFontSize();
+                document.getElementById('tpSpeedSlider').value = settings.scrollSpeed;
+                document.getElementById('tpSpeedLabel').textContent = '速度 ' + settings.scrollSpeed;
+                // 自动开始播放
+                setTimeout(() => tpStartPlay(), 400);
+                // 隐藏控制栏
+                setTimeout(() => {
+                    document.getElementById('teleprompterControls').classList.add('hidden');
+                }, 3000);
+            };
+
+            window.startSingleTeleprompter = function(itemId) {
+                const group = getCurrentGroup();
+                if (!group) return;
+                tpItems = group.items.filter(i => i.id === itemId);
+                if (tpItems.length === 0) {
+                    // 如果没找到，使用所有条目但从该条目开始
+                    tpItems = [...group.items];
+                    tpCurrentItemIndex = group.items.findIndex(i => i.id === itemId);
+                    if (tpCurrentItemIndex < 0) tpCurrentItemIndex = 0;
+                } else {
+                    tpCurrentItemIndex = 0;
+                }
+                const overlay = document.getElementById('teleprompterOverlay');
+                overlay.classList.add('active');
+                updateTeleprompterContent();
+                updateTeleprompterFontSize();
+                document.getElementById('tpSpeedSlider').value = settings.scrollSpeed;
+                document.getElementById('tpSpeedLabel').textContent = '速度 ' + settings.scrollSpeed;
+                setTimeout(() => tpStartPlay(), 400);
+                setTimeout(() => {
+                    document.getElementById('teleprompterControls').classList.add('hidden');
+                }, 3000);
+            };
+
+            function updateTeleprompterContent() {
+                const textEl = document.getElementById('teleprompterText');
+                if (tpItems.length > 0 && tpCurrentItemIndex < tpItems.length) {
+                    textEl.textContent = tpItems[tpCurrentItemIndex].text;
+                } else {
+                    textEl.textContent = '（无内容）';
+                }
+                textEl.scrollTop = 0;
+            }
+
+            function updateTeleprompterFontSize() {
+                document.getElementById('teleprompterText').style.fontSize = settings.fontSize + 'px';
+            }
+
+            function tpStartPlay() {
+                tpStopPlay();
+                tpIsPlaying = true;
+                const playBtn = document.getElementById('tpPlayBtn');
+                playBtn.textContent = '⏸';
+                playBtn.classList.add('playing');
+                const textEl = document.getElementById('teleprompterText');
+                const speed = settings.scrollSpeed;
+                // 速度映射：1-20 -> 每帧像素 (0.15 ~ 3.0)
+                const pixelsPerFrame = speed * 0.15;
+
+                function scrollStep() {
+                    if (!tpIsPlaying) return;
+                    if (textEl.scrollTop >= textEl.scrollHeight - textEl.clientHeight) {
+                        // 滚动到底部，切换到下一条
+                        tpNextItem();
+                        return;
+                    }
+                    textEl.scrollTop += pixelsPerFrame;
+                    tpScrollInterval = requestAnimationFrame(scrollStep);
+                }
+                tpScrollInterval = requestAnimationFrame(scrollStep);
+            }
+
+            function tpStopPlay() {
+                tpIsPlaying = false;
+                const playBtn = document.getElementById('tpPlayBtn');
+                playBtn.textContent = '▶';
+                playBtn.classList.remove('playing');
+                if (tpScrollInterval) {
+                    cancelAnimationFrame(tpScrollInterval);
+                    tpScrollInterval = null;
+                }
+            }
+
+            window.tpTogglePlay = function() {
+                if (tpIsPlaying) {
+                    tpStopPlay();
+                } else {
+                    tpStartPlay();
+                }
+                // 显示控制栏
+                const controls = document.getElementById('teleprompterControls');
+                controls.classList.remove('hidden');
+                clearTimeout(controls._hideTimeout);
+                controls._hideTimeout = setTimeout(() => {
+                    if (tpIsPlaying) controls.classList.add('hidden');
+                }, 3000);
+            };
+
+            window.tpNextItem = function() {
+                tpStopPlay();
+                if (tpItems.length === 0) return;
+                tpCurrentItemIndex = (tpCurrentItemIndex + 1) % tpItems.length;
+                updateTeleprompterContent();
+                setTimeout(() => tpStartPlay(), 200);
+            };
+
+            window.tpPrevItem = function() {
+                tpStopPlay();
+                if (tpItems.length === 0) return;
+                tpCurrentItemIndex = (tpCurrentItemIndex - 1 + tpItems.length) % tpItems.length;
+                updateTeleprompterContent();
+                setTimeout(() => tpStartPlay(), 200);
+            };
+
+            window.tpFontSmaller = function() {
+                settings.fontSize = Math.max(16, settings.fontSize - 4);
+                saveSettings();
+                updateTeleprompterFontSize();
+            };
+
+            window.tpFontLarger = function() {
+                settings.fontSize = Math.min(120, settings.fontSize + 4);
+                saveSettings();
+                updateTeleprompterFontSize();
+            };
+
+            window.tpUpdateSpeed = function(value) {
+                settings.scrollSpeed = parseInt(value);
+                saveSettings();
+                document.getElementById('tpSpeedLabel').textContent = '速度 ' + value;
+                if (tpIsPlaying) {
+                    tpStopPlay();
+                    tpStartPlay();
+                }
+            };
+
+            window.tpResetScroll = function() {
+                const textEl = document.getElementById('teleprompterText');
+                textEl.scrollTop = 0;
+                if (tpIsPlaying) {
+                    tpStopPlay();
+                    tpStartPlay();
+                }
+            };
+
+            function stopTeleprompter() {
+                tpStopPlay();
+                document.getElementById('teleprompterOverlay').classList.remove('active');
+                document.getElementById('teleprompterControls').classList.remove('hidden');
+                tpItems = [];
+                tpCurrentItemIndex = 0;
+            }
+            window.stopTeleprompter = stopTeleprompter;
+
+            // 提词模式下显示/隐藏控制栏
+            document.getElementById('teleprompterContent')?.addEventListener('click', function() {
+                const controls = document.getElementById('teleprompterControls');
+                if (controls.classList.contains('hidden')) {
+                    controls.classList.remove('hidden');
+                    clearTimeout(controls._hideTimeout);
+                    controls._hideTimeout = setTimeout(() => {
+                        if (tpIsPlaying) controls.classList.add('hidden');
+                    }, 3000);
+                } else {
+                    controls.classList.add('hidden');
+                }
+            });
+
+            // 提词模式键盘快捷键
+            document.addEventListener('keydown', function(e) {
+                const overlay = document.getElementById('teleprompterOverlay');
+                if (!overlay.classList.contains('active')) return;
+                if (document.getElementById('modalBackdrop').classList.contains('active')) return;
+
+                switch (e.key) {
+                    case ' ':
+                        e.preventDefault();
+                        window.tpTogglePlay();
+                        break;
+                    case 'ArrowRight':
+                        e.preventDefault();
+                        window.tpNextItem();
+                        break;
+                    case 'ArrowLeft':
+                        e.preventDefault();
+                        window.tpPrevItem();
+                        break;
+                    case 'ArrowUp':
+                        e.preventDefault();
+                        window.tpFontLarger();
+                        break;
+                    case 'ArrowDown':
+                        e.preventDefault();
+                        window.tpFontSmaller();
+                        break;
+                    case 'r':
+                    case 'R':
+                        e.preventDefault();
+                        window.tpResetScroll();
+                        break;
+                    case 'Escape':
+                        e.preventDefault();
+                        stopTeleprompter();
+                        break;
+                }
+            });
+
+            // ==================== 全屏 ====================
+            window.toggleFullscreen = function() {
+                const overlay = document.getElementById('teleprompterOverlay');
+                if (overlay.classList.contains('active')) {
+                    // 提词模式全屏
+                    if (!document.fullscreenElement) {
+                        overlay.requestFullscreen().catch(() => {});
+                    } else {
+                        document.exitFullscreen();
+                    }
+                } else {
+                    if (!document.fullscreenElement) {
+                        document.getElementById('appContainer').requestFullscreen().catch(() => {});
+                    } else {
+                        document.exitFullscreen();
+                    }
+                }
+            };
+
+            // ==================== 导入导出 ====================
+            window.exportData = function() {
+                const dataStr = JSON.stringify(appData, null, 2);
+                const blob = new Blob([dataStr], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = '提词器备份_' + new Date().toISOString().slice(0, 10) + '.json';
+                a.click();
+                URL.revokeObjectURL(url);
+                document.getElementById('settingsPanel').classList.remove('active');
+            };
+
+            window.importDataPrompt = function() {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.json';
+                input.onchange = function(e) {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = function(ev) {
+                        try {
+                            const data = JSON.parse(ev.target.result);
+                            if (data.groups && Array.isArray(data.groups)) {
+                                if (confirm('导入将覆盖当前所有数据，确定继续吗？')) {
+                                    appData = data;
+                                    if (!appData.groups.find(g => g.id === appData.currentGroupId)) {
+                                        appData.currentGroupId = appData.groups[0]?.id || 'default';
+                                    }
+                                    if (appData.groups.length === 0) {
+                                        appData.groups = [{ id: 'default', name: '默认分组', items: [] }];
+                                        appData.currentGroupId = 'default';
+                                    }
+                                    saveData();
+                                    renderAll();
+                                    alert('导入成功！');
+                                }
+                            } else {
+                                alert('文件格式不正确');
+                            }
+                        } catch (err) {
+                            alert('文件解析失败');
+                        }
+                    };
+                    reader.readAsText(file);
+                };
+                input.click();
+                document.getElementById('settingsPanel').classList.remove('active');
+            };
+
+            window.clearAllData = function() {
+                if (confirm('确定要清空所有数据吗？此操作不可恢复！\n\n建议先导出备份。')) {
+                    if (confirm('再次确认：真的要清空所有数据吗？')) {
+                        appData = {
+                            groups: [{ id: 'default', name: '默认分组', items: [] }],
+                            currentGroupId: 'default',
+                        };
+                        saveData();
+                        renderAll();
+                        alert('数据已清空');
+                    }
+                }
+                document.getElementById('settingsPanel').classList.remove('active');
+            };
+
+            // ==================== 全局快捷键 ====================
+            document.addEventListener('keydown', function(e) {
+                // Ctrl+N 添加新条目
+                if (e.ctrlKey && e.key === 'n') {
+                    e.preventDefault();
+                    window.manualAddItem();
+                }
+                // Ctrl+Shift+V 捕获剪贴板
+                if (e.ctrlKey && e.shiftKey && e.key === 'V') {
+                    e.preventDefault();
+                    window.captureClipboard();
+                }
+                // Ctrl+, 打开设置
+                if (e.ctrlKey && e.key === ',') {
+                    e.preventDefault();
+                    window.toggleSettings();
+                }
+            });
+
+            // ==================== 初始化 ====================
+            function init() {
+                loadSettings();
+                loadData();
+                applySettings();
+                renderAll();
+
+                // 初始检查剪贴板
+                setTimeout(checkClipboard, 500);
+
+                console.log('📝 提词器已就绪');
+                console.log('  - 复制文本后自动检测或点击「捕获」');
+                console.log('  - Ctrl+V 直接粘贴添加');
+                console.log('  - Ctrl+N 手动添加');
+                console.log('  - Ctrl+Shift+V 捕获剪贴板');
+                console.log('  - 双击条目编辑');
+                console.log('  - 拖拽排序条目和分组');
+                console.log('  - 点击 ▶ 开始提词模式');
+                console.log('  - 提词模式中：空格=播放/暂停，←→=切换，↑↓=调字体');
+            }
+
+            init();
+        })();
+    </script>
+</body>
+</html>
