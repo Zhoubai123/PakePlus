@@ -1,0 +1,1476 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no, maximum-scale=1.0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="theme-color" content="#4f46e5">
+    <title>📦 灵感收集箱</title>
+    <style>
+        /* ── 全局样式（保持不变，简洁可维护）── */
+        :root {
+            --bg: #f7f8fc;
+            --card: #fff;
+            --text: #1e293b;
+            --sub: #64748b;
+            --border: #e5e7eb;
+            --accent: #4f46e5;
+            --accent-light: #eef2ff;
+            --shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+            --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.09);
+            --radius: 16px;
+            --radius-sm: 10px;
+            --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            padding: 1.25rem;
+            line-height: 1.5;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .app {
+            width: 100%;
+            max-width: 1340px;
+            display: flex;
+            gap: 1.25rem;
+            align-items: flex-start;
+            flex-wrap: wrap;
+        }
+
+        .sidebar {
+            background: var(--card);
+            border-radius: var(--radius);
+            padding: 1.25rem;
+            box-shadow: var(--shadow);
+            width: 230px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            position: sticky;
+            top: 1.25rem;
+            border: 1px solid var(--border);
+            max-height: calc(100vh - 2.5rem);
+            overflow-y: auto;
+        }
+
+        .sidebar h2 {
+            font-size: 1.2rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .sidebar nav {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+        }
+
+        .nav-btn {
+            padding: 0.55rem 0.85rem;
+            border-radius: 0.7rem;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: #475569;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            border: none;
+            background: transparent;
+            width: 100%;
+            text-align: left;
+        }
+
+        .nav-btn:hover {
+            background: #f1f5f9;
+        }
+
+        .nav-btn.active {
+            background: var(--accent-light);
+            color: var(--accent);
+            font-weight: 700;
+        }
+
+        .nav-count {
+            margin-left: auto;
+            background: #e2e8f0;
+            font-size: 0.7rem;
+            padding: 0.1rem 0.55rem;
+            border-radius: 1rem;
+            font-weight: 600;
+            min-width: 1.5rem;
+            text-align: center;
+        }
+
+        .tag-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.35rem;
+        }
+
+        .tag-chip {
+            background: #f1f5f9;
+            padding: 0.25rem 0.65rem;
+            border-radius: 1rem;
+            font-size: 0.78rem;
+            cursor: pointer;
+            transition: var(--transition);
+            border: 1px solid transparent;
+            color: #475569;
+        }
+
+        .tag-chip:hover,
+        .tag-chip.active {
+            background: #e0e7ff;
+            color: #3730a3;
+            border-color: #c7d2fe;
+        }
+
+        .sidebar .btn-side {
+            width: 100%;
+            padding: 0.55rem;
+            border-radius: 0.7rem;
+            font-weight: 600;
+            font-size: 0.82rem;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            background: #fff;
+            color: #475569;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+            transition: var(--transition);
+        }
+
+        .btn-side:hover {
+            background: #f8fafc;
+            border-color: #cbd5e1;
+        }
+
+        .btn-side.accent {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+        }
+
+        .btn-side.accent:hover {
+            background: #4338ca;
+        }
+
+        .main {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .drop-zone {
+            background: var(--card);
+            border: 2px dashed #d1d5db;
+            border-radius: var(--radius);
+            padding: 1.8rem 1.5rem;
+            text-align: center;
+            color: #6b7280;
+            transition: var(--transition);
+            cursor: pointer;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .drop-zone:hover,
+        .drop-zone.drag-over {
+            border-color: var(--accent);
+            background: #faf9ff;
+        }
+
+        .drop-zone .hint {
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+
+        .drop-zone .hint small {
+            display: block;
+            font-size: 0.78rem;
+            color: #9ca3af;
+            margin-top: 0.25rem;
+        }
+
+        .upload-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.6rem 1.3rem;
+            background: #fff;
+            border: 1.5px solid #c7d2fe;
+            border-radius: 2rem;
+            color: var(--accent);
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: 0 2px 8px rgba(79, 70, 229, 0.06);
+        }
+
+        .upload-btn:hover {
+            background: #eef2ff;
+            border-color: var(--accent);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 14px rgba(79, 70, 229, 0.13);
+        }
+
+        .search-bar {
+            display: flex;
+            gap: 0.6rem;
+            flex-wrap: wrap;
+        }
+
+        .search-bar input {
+            flex: 1;
+            min-width: 180px;
+            padding: 0.65rem 0.9rem;
+            border: 1px solid var(--border);
+            border-radius: 0.8rem;
+            font-size: 0.88rem;
+            outline: none;
+            background: #fff;
+            transition: var(--transition);
+        }
+
+        .search-bar input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.08);
+        }
+
+        .btn {
+            padding: 0.6rem 1.1rem;
+            border-radius: 0.8rem;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            transition: var(--transition);
+            white-space: nowrap;
+            background: #f1f5f9;
+            color: #334155;
+        }
+
+        .btn:hover {
+            background: #e2e8f0;
+            transform: translateY(-1px);
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background: #4338ca;
+            box-shadow: 0 4px 14px rgba(79, 70, 229, 0.3);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+
+        .card {
+            background: var(--card);
+            border-radius: var(--radius);
+            padding: 1.2rem;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            cursor: pointer;
+            transition: var(--transition);
+            position: relative;
+            word-break: break-word;
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-2px);
+            border-color: #c7d2fe;
+        }
+
+        .card-type-badge {
+            position: absolute;
+            top: 0.7rem;
+            right: 0.7rem;
+            font-size: 0.68rem;
+            font-weight: 700;
+            background: #f1f5f9;
+            padding: 0.18rem 0.55rem;
+            border-radius: 0.5rem;
+            color: #64748b;
+            letter-spacing: 0.3px;
+        }
+
+        .card-title {
+            font-weight: 700;
+            font-size: 1rem;
+            padding-right: 3.5rem;
+            line-height: 1.35;
+            color: #0f172a;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .card-content {
+            font-size: 0.85rem;
+            color: #475569;
+            white-space: pre-wrap;
+            max-height: 72px;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            line-height: 1.45;
+        }
+
+        .card-url-row {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.8rem;
+            color: var(--accent);
+            font-weight: 500;
+        }
+
+        .card-images-row {
+            display: flex;
+            gap: 0.4rem;
+            flex-wrap: wrap;
+        }
+
+        .card-thumb {
+            width: 55px;
+            height: 55px;
+            object-fit: cover;
+            border-radius: 0.5rem;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .card-thumb:hover {
+            transform: scale(1.06);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+        }
+
+        .card-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.3rem;
+        }
+
+        .card-tag {
+            background: #eef2ff;
+            color: #4f46e5;
+            font-size: 0.7rem;
+            padding: 0.12rem 0.5rem;
+            border-radius: 0.8rem;
+            font-weight: 500;
+        }
+
+        .card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.7rem;
+            color: #94a3b8;
+            margin-top: 0.2rem;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 0.25rem;
+        }
+
+        .icon-btn {
+            background: none;
+            border: none;
+            color: #64748b;
+            cursor: pointer;
+            font-size: 0.95rem;
+            padding: 0.25rem 0.35rem;
+            border-radius: 0.4rem;
+            transition: var(--transition);
+        }
+
+        .icon-btn:hover {
+            background: #f1f5f9;
+            color: #1e293b;
+        }
+
+        .icon-btn.starred {
+            color: #f59e0b;
+        }
+
+        .empty-hint {
+            text-align: center;
+            padding: 3rem;
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+
+        /* 弹窗与灯箱 */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.45);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: #fff;
+            border-radius: var(--radius);
+            padding: 1.8rem;
+            width: 100%;
+            max-width: 600px;
+            max-height: 88vh;
+            overflow-y: auto;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.18);
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            animation: modalIn 0.22s ease;
+        }
+
+        @keyframes modalIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px) scale(0.96);
+            }
+            to {
+                opacity: 1;
+                transform: none;
+            }
+        }
+
+        .modal h3 {
+            font-size: 1.3rem;
+            font-weight: 800;
+            padding-right: 2rem;
+            line-height: 1.35;
+        }
+
+        .modal .meta {
+            font-size: 0.8rem;
+            color: #94a3b8;
+        }
+
+        .modal .content-full {
+            white-space: pre-wrap;
+            font-size: 0.9rem;
+            color: #334155;
+            line-height: 1.6;
+            max-height: 300px;
+            overflow-y: auto;
+            background: #f9fafb;
+            padding: 0.8rem;
+            border-radius: 0.6rem;
+        }
+
+        .modal .images-full {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .modal .images-full img {
+            max-width: 100%;
+            max-height: 320px;
+            border-radius: 0.6rem;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            object-fit: contain;
+            background: #f1f5f9;
+        }
+
+        .modal .link-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            background: var(--accent);
+            color: #fff;
+            padding: 0.6rem 1.2rem;
+            border-radius: 0.7rem;
+            font-weight: 700;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: var(--transition);
+        }
+
+        .modal .link-btn:hover {
+            background: #4338ca;
+        }
+
+        .modal .btn-row {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .lightbox {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.88);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            padding: 1rem;
+        }
+
+        .lightbox.active {
+            display: flex;
+        }
+
+        .lightbox img {
+            max-width: 95vw;
+            max-height: 92vh;
+            border-radius: 0.8rem;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            object-fit: contain;
+        }
+
+        .lightbox .close-hint {
+            position: absolute;
+            top: 1rem;
+            right: 1.5rem;
+            color: #fff;
+            font-size: 2rem;
+            cursor: pointer;
+            opacity: 0.7;
+        }
+
+        .lightbox .close-hint:hover {
+            opacity: 1;
+        }
+
+        .toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-130px);
+            background: #1e293b;
+            color: #fff;
+            padding: 0.7rem 1.6rem;
+            border-radius: 2rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            z-index: 3000;
+            pointer-events: none;
+            transition: transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            white-space: nowrap;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        @media (max-width: 750px) {
+            .app {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+                position: static;
+                flex-direction: row;
+                flex-wrap: wrap;
+                gap: 0.5rem;
+                max-height: none;
+            }
+            .sidebar nav {
+                flex-direction: row;
+                flex-wrap: wrap;
+            }
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* 隐藏的实际文件输入 */
+        #fileInput,
+        #importFile {
+            position: absolute;
+            width: 0;
+            height: 0;
+            opacity: 0;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <!-- 侧边栏 -->
+        <aside class="sidebar">
+            <h2>📦 灵感箱</h2>
+            <nav id="categoryNav"></nav>
+            <div>
+                <strong style="font-size:0.8rem;color:#64748b;">🏷️ 常用标签</strong>
+                <div class="tag-list" id="tagFilterList"></div>
+            </div>
+            <button class="btn-side" id="btnStarred">⭐ 收藏夹</button>
+            <button class="btn-side accent" id="btnExtract">📋 提取全部摘要</button>
+            <button class="btn-side" id="btnExport">⬇️ 导出备份</button>
+            <button class="btn-side" id="btnImport">⬆️ 导入备份</button>
+        </aside>
+
+        <!-- 主区域 -->
+        <main class="main">
+            <div class="drop-zone" id="dropZone">
+                <div class="hint">📥 在此粘贴链接、文字、图片...<br><small>支持 Ctrl+V · 拖拽文件 · 点击上传</small></div>
+                <button class="upload-btn" onclick="document.getElementById('fileInput').click()">📎 上传本地文件</button>
+            </div>
+            <div class="search-bar">
+                <input type="text" placeholder="🔍 搜索标题、标签或内容..." id="searchInput">
+                <button class="btn" id="btnClearSearch">清除</button>
+            </div>
+            <div class="grid" id="grid"></div>
+            <div class="empty-hint" id="emptyHint">✨ 粘贴第一条灵感开始构建知识库吧</div>
+        </main>
+    </div>
+
+    <!-- 隐藏的文件输入 -->
+    <input type="file" id="fileInput" accept="image/*,.txt,.md,.text" multiple>
+    <input type="file" id="importFile" accept=".json">
+
+    <!-- 详情弹窗 -->
+    <div class="modal-overlay" id="detailModal">
+        <div class="modal" id="detailContent"></div>
+    </div>
+
+    <!-- 图片灯箱 -->
+    <div class="lightbox" id="lightbox">
+        <span class="close-hint" onclick="closeLightbox()">✕</span>
+        <img src="" alt="放大图片" id="lightboxImg">
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        (function() {
+            // ─── 数据存储 ───
+            const STORAGE_KEY = 'inspire_box_final';
+            let entries = [];
+            let currentCategory = 'all';
+            let currentTag = null;
+
+            // ─── 工具函数 ───
+            function $(selector) { return document.querySelector(selector); }
+
+            function $$(selector) { return document.querySelectorAll(selector); }
+
+            function escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text || '';
+                return div.innerHTML;
+            }
+
+            function generateId() {
+                return Date.now().toString(36) + Math.random().toString(36).substr(2, 8);
+            }
+
+            function loadData() {
+                try {
+                    entries = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+                } catch (e) {
+                    entries = [];
+                }
+                // 补齐默认字段
+                entries = entries.map(e => ({
+                    ...e,
+                    images: e.images || [],
+                    tags: e.tags || [],
+                    isStarred: !!e.isStarred,
+                    summary: e.summary || '',
+                    content: e.content || '',
+                    url: e.url || '',
+                    type: e.type || 'note',
+                    category: e.category || '其他',
+                    title: e.title || '未命名'
+                }));
+            }
+
+            function saveData() {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+            }
+
+            // ─── 智能标题生成 ───
+            function generateSmartTitle(type, text, url, fileName, htmlDoc) {
+                // 1. 尝试从HTML提取
+                if (htmlDoc) {
+                    try {
+                        const h1 = htmlDoc.querySelector('h1');
+                        if (h1 && h1.textContent.trim().length > 0 && h1.textContent.trim().length < 120) {
+                            return h1.textContent.trim();
+                        }
+                        const titleTag = htmlDoc.querySelector('title');
+                        if (titleTag && titleTag.textContent.trim().length > 0) {
+                            let t = titleTag.textContent.trim();
+                            // 去除常见网站后缀
+                            t = t.replace(/\s*[|\-–—]\s*(YouTube|Bilibili|抖音|小红书|TikTok|Twitter|X|Instagram|Facebook|微博|zhihu\.com|知乎).*/i,
+                                '');
+                            t = t.trim();
+                            if (t.length > 0 && t.length < 120) return t;
+                        }
+                    } catch (e) {}
+                }
+
+                // 2. 图片类型优先用文件名
+                if (type === 'image' && fileName) {
+                    const name = fileName.replace(/\.[^.]+$/, '').replace(/[_-]/g, ' ').trim();
+                    if (name.length > 0 && name.length < 60) return name;
+                }
+
+                // 3. 纯文本首行
+                const cleanText = (text || '').replace(url || '', '').trim();
+                const lines = cleanText.split('\n').filter(l => l.trim().length > 0);
+                if (lines.length > 0) {
+                    let firstLine = lines[0].replace(/^#{1,6}\s*/, '').replace(/^[>\s•·●◎○◆◇▪▸►]+/, '').trim();
+                    if (firstLine.length > 2 && firstLine.length <= 60) return firstLine;
+                    if (firstLine.length > 60) return firstLine.slice(0, 60) + '…';
+                }
+
+                // 4. 根据类型回退
+                if (type === 'video' && url) {
+                    try { return '🎬 ' + new URL(url).hostname.replace('www.', ''); } catch (e) {}
+                }
+                if (type === 'link' && url) {
+                    try { return '🔗 ' + new URL(url).hostname.replace('www.', ''); } catch (e) {}
+                }
+
+                return (type === 'image' ? '🖼️ 图片' : '📝 笔记') + ' ' + new Date().toLocaleTimeString();
+            }
+
+            // ─── 自动分类与标签 ───
+            function autoCategory(type) {
+                const map = { image: '图片', video: '视频', link: '链接', note: '笔记' };
+                return map[type] || '其他';
+            }
+
+            function autoTags(text) {
+                if (!text) return [];
+                const kw = ['教程', '美食', '旅行', '科技', '搞笑', '学习', '健身', '音乐', '设计', '读书', '电影', '摄影', '代码', '工具', '生活',
+                    '健康', '穿搭', '美妆', '宠物', '游戏', 'AI', '创业', '职场', '理财', '家居', '手工', '绘画', '历史', '哲学', '心理', '效率',
+                    '笔记', '灵感'
+                ];
+                const lower = text.toLowerCase();
+                return kw.filter(k => lower.includes(k)).slice(0, 5);
+            }
+
+            function extractUrls(text) {
+                const re = /https?:\/\/[^\s<>"']+/g;
+                return text.match(re) || [];
+            }
+
+            function isVideoUrl(url) {
+                const domains = ['youtube.com', 'youtu.be', 'bilibili.com', 'b23.tv', 'douyin.com', 'iesdouyin.com',
+                    'xiaohongshu.com', 'xhslink.com', 'vimeo.com', 'tiktok.com'
+                ];
+                return domains.some(d => url.includes(d));
+            }
+
+            // ─── 创建条目 ───
+            function createEntry({ type, text, url, imageDataUrl, images, fileName, htmlDoc }) {
+                const id = generateId();
+                const content = text || '';
+                const mainUrl = url || '';
+                const imageList = images ? [...images] : [];
+                if (imageDataUrl) imageList.push(imageDataUrl);
+
+                const category = autoCategory(type);
+                const title = generateSmartTitle(type, content, mainUrl, fileName, htmlDoc);
+                const tags = autoTags(content + ' ' + mainUrl);
+                const summary = content ? content.replace(/\s+/g, ' ').slice(0, 150) : '';
+
+                return {
+                    id,
+                    type,
+                    title,
+                    category,
+                    content,
+                    url: mainUrl,
+                    images: imageList,
+                    tags,
+                    summary,
+                    isStarred: false,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                };
+            }
+
+            function addEntry(entry) {
+                entries.unshift(entry);
+                saveData();
+                refreshUI();
+                showToast(`✅ 已添加至「${entry.category}」`);
+            }
+
+            // ─── 粘贴处理 (修复版) ───
+            function handlePaste(e) {
+                const activeEl = document.activeElement;
+                // 如果焦点在输入框内，不拦截
+                if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl
+                        .isContentEditable)) {
+                    return;
+                }
+
+                e.preventDefault();
+                const items = e.clipboardData?.items;
+                if (!items) return;
+
+                let imageFile = null;
+                let textData = '';
+                let htmlData = '';
+
+                // 先检查是否有图片
+                for (let item of items) {
+                    if (item.type.startsWith('image/') && item.kind === 'file') {
+                        imageFile = item.getAsFile();
+                        break;
+                    }
+                }
+
+                if (imageFile) {
+                    const reader = new FileReader();
+                    reader.onload = function(ev) {
+                        const base64 = ev.target.result;
+                        const text = e.clipboardData.getData('text/plain') || '';
+                        const html = e.clipboardData.getData('text/html');
+                        let htmlDoc = null;
+                        if (html) {
+                            try { htmlDoc = new DOMParser().parseFromString(html, 'text/html'); } catch (ex) {}
+                        }
+                        const entry = createEntry({
+                            type: 'image',
+                            text: text,
+                            imageDataUrl: base64,
+                            fileName: imageFile.name,
+                            htmlDoc: htmlDoc
+                        });
+                        addEntry(entry);
+                    };
+                    reader.readAsDataURL(imageFile);
+                    return;
+                }
+
+                // 没有图片则处理文本
+                textData = e.clipboardData.getData('text/plain');
+                htmlData = e.clipboardData.getData('text/html');
+
+                let htmlDoc = null;
+                if (htmlData) {
+                    try {
+                        htmlDoc = new DOMParser().parseFromString(htmlData, 'text/html');
+                    } catch (e) {}
+                }
+
+                // 如果HTML中包含图片（例如从网页复制带图片），提取图片
+                if (htmlDoc) {
+                    const imgs = Array.from(htmlDoc.querySelectorAll('img')).map(img => img.src).filter(Boolean);
+                    if (imgs.length > 0) {
+                        const t = textData || htmlDoc.body.textContent || '';
+                        const entry = createEntry({
+                            type: 'image',
+                            text: t,
+                            images: imgs.slice(0, 4),
+                            htmlDoc: htmlDoc
+                        });
+                        addEntry(entry);
+                        return;
+                    }
+                }
+
+                // 纯文本处理
+                if (textData && textData.trim()) {
+                    const urls = extractUrls(textData);
+                    if (urls.length > 0) {
+                        const firstUrl = urls[0];
+                        const type = isVideoUrl(firstUrl) ? 'video' : 'link';
+                        const entry = createEntry({
+                            type,
+                            text: textData,
+                            url: firstUrl,
+                            htmlDoc: htmlDoc
+                        });
+                        addEntry(entry);
+                    } else {
+                        const entry = createEntry({
+                            type: 'note',
+                            text: textData,
+                            htmlDoc: htmlDoc
+                        });
+                        addEntry(entry);
+                    }
+                }
+            }
+
+            // ─── 拖拽处理 ───
+            function handleDrop(e) {
+                e.preventDefault();
+                const dropZone = $('#dropZone');
+                if (dropZone) dropZone.classList.remove('drag-over');
+                const files = e.dataTransfer?.files;
+                if (!files || files.length === 0) return;
+                processFiles(files);
+            }
+
+            // ─── 文件上传处理 (修复版) ───
+            function processFiles(files) {
+                Array.from(files).forEach(file => {
+                    if (!file) return;
+
+                    // 图片
+                    if (file.type.startsWith('image/')) {
+                        const reader = new FileReader();
+                        reader.onload = function(ev) {
+                            const entry = createEntry({
+                                type: 'image',
+                                text: '',
+                                imageDataUrl: ev.target.result,
+                                fileName: file.name
+                            });
+                            addEntry(entry);
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                    // 文本文件
+                    else if (file.name.endsWith('.txt') || file.name.endsWith('.md') || file.name.endsWith(
+                            '.text') || file.type === 'text/plain') {
+                        const reader = new FileReader();
+                        reader.onload = function(ev) {
+                            const text = ev.target.result;
+                            const entry = createEntry({
+                                type: 'note',
+                                text: text,
+                                fileName: file.name
+                            });
+                            addEntry(entry);
+                        };
+                        reader.readAsText(file, 'UTF-8');
+                    } else {
+                        showToast('⚠️ 暂不支持格式：' + file.name);
+                    }
+                });
+            }
+
+            // ─── 过滤与搜索 ───
+            function getFiltered() {
+                const search = $('#searchInput')?.value.trim().toLowerCase() || '';
+                let filtered = entries;
+
+                if (currentCategory === 'starred') {
+                    filtered = filtered.filter(e => e.isStarred);
+                } else if (currentCategory !== 'all') {
+                    filtered = filtered.filter(e => (e.category || '其他') === currentCategory);
+                }
+
+                if (currentTag) {
+                    filtered = filtered.filter(e => (e.tags || []).includes(currentTag));
+                }
+
+                if (search) {
+                    filtered = filtered.filter(e =>
+                        (e.title + ' ' + (e.content || '') + ' ' + (e.tags || []).join(' ') + ' ' + (e.url ||
+                            '')).toLowerCase().includes(search)
+                    );
+                }
+
+                return filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            }
+
+            // ─── 渲染侧边栏 ───
+            function renderSidebar() {
+                // 统计分类数量
+                const countMap = { all: entries.length, starred: entries.filter(e => e.isStarred).length };
+                entries.forEach(e => {
+                    const cat = e.category || '其他';
+                    countMap[cat] = (countMap[cat] || 0) + 1;
+                });
+
+                // 构建分类导航
+                const nav = $('#categoryNav');
+                let html =
+                    `<button class="nav-btn ${currentCategory === 'all' ? 'active' : ''}" data-cat="all">📌 全部 <span class="nav-count">${countMap.all}</span></button>`;
+                html +=
+                    `<button class="nav-btn ${currentCategory === 'starred' ? 'active' : ''}" data-cat="starred">⭐ 收藏 <span class="nav-count">${countMap.starred || 0}</span></button>`;
+                Object.keys(countMap).forEach(cat => {
+                    if (cat === 'all' || cat === 'starred') return;
+                    html +=
+                        `<button class="nav-btn ${currentCategory === cat ? 'active' : ''}" data-cat="${escapeHtml(cat)}">${escapeHtml(cat)} <span class="nav-count">${countMap[cat]}</span></button>`;
+                });
+                nav.innerHTML = html;
+
+                // 绑定分类点击事件
+                nav.querySelectorAll('.nav-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        currentCategory = btn.dataset.cat;
+                        currentTag = null;
+                        renderSidebar();
+                        renderGrid();
+                        renderTagFilters();
+                    });
+                });
+
+                // 渲染标签列表
+                const tagCount = {};
+                entries.forEach(e => (e.tags || []).forEach(t => {
+                    if (t) tagCount[t] = (tagCount[t] || 0) + 1;
+                }));
+                const sorted = Object.entries(tagCount).sort((a, b) => b[1] - a[1]).slice(0, 12);
+                const tagContainer = $('#tagFilterList');
+                tagContainer.innerHTML = sorted.map(([tag, count]) =>
+                    `<span class="tag-chip ${currentTag === tag ? 'active' : ''}" data-tag="${escapeHtml(tag)}">${escapeHtml(tag)} (${count})</span>`
+                ).join('');
+
+                tagContainer.querySelectorAll('.tag-chip').forEach(chip => {
+                    chip.addEventListener('click', () => {
+                        const tag = chip.dataset.tag;
+                        currentTag = (currentTag === tag) ? null : tag;
+                        currentCategory = 'all';
+                        renderSidebar();
+                        renderGrid();
+                        renderTagFilters();
+                    });
+                });
+            }
+
+            function renderTagFilters() {
+                $$('.tag-chip').forEach(chip => {
+                    chip.classList.toggle('active', chip.dataset.tag === currentTag);
+                });
+            }
+
+            // ─── 渲染卡片网格 ───
+            function renderGrid() {
+                const grid = $('#grid');
+                const filtered = getFiltered();
+                const emptyHint = $('#emptyHint');
+
+                if (filtered.length === 0) {
+                    grid.innerHTML = '';
+                    if (emptyHint) emptyHint.style.display = 'block';
+                } else {
+                    if (emptyHint) emptyHint.style.display = 'none';
+                    grid.innerHTML = filtered.map(e => cardHTML(e)).join('');
+                    bindCardEvents();
+                }
+            }
+
+            function cardHTML(e) {
+                const typeIcons = { image: '🖼️', video: '🎬', link: '🔗', note: '📝' };
+                const typeIcon = typeIcons[e.type] || '📌';
+                const imgs = (e.images || []).slice(0, 3).map(img =>
+                    `<img src="${escapeHtml(img)}" class="card-thumb" loading="lazy" onclick="event.stopPropagation(); openLightbox('${escapeHtml(img)}')">`
+                ).join('');
+                const tagsHtml = (e.tags || []).map(t => `<span class="card-tag">${escapeHtml(t)}</span>`).join('');
+                const date = new Date(e.createdAt).toLocaleString('zh-CN', { month: 'short', day: 'numeric',
+                    hour: '2-digit', minute: '2-digit' });
+                const starIcon = e.isStarred ? '⭐' : '☆';
+
+                return `
+                <div class="card" data-id="${e.id}">
+                    <div class="card-type-badge">${typeIcon} ${escapeHtml(e.category)}</div>
+                    <div class="card-title">${escapeHtml(e.title)}</div>
+                    ${e.content ? `<div class="card-content">${escapeHtml(e.content.slice(0, 150))}</div>` : ''}
+                    ${e.url ? `<div class="card-url-row"><span>🔗</span>${escapeHtml(e.url.length > 45 ? e.url.slice(0, 45) + '…' : e.url)}</div>` : ''}
+                    ${imgs ? `<div class="card-images-row">${imgs}</div>` : ''}
+                    ${tagsHtml ? `<div class="card-tags">${tagsHtml}</div>` : ''}
+                    <div class="card-footer">
+                        <span>${date}</span>
+                        <div class="card-actions">
+                            <button class="icon-btn star-btn ${e.isStarred ? 'starred' : ''}" data-action="star">${starIcon}</button>
+                            <button class="icon-btn" data-action="share">↗️</button>
+                            <button class="icon-btn" data-action="copy">📋</button>
+                        </div>
+                    </div>
+                </div>`;
+            }
+
+            function bindCardEvents() {
+                $$('.card').forEach(card => {
+                    const id = card.dataset.id;
+                    // 点击卡片打开详情
+                    card.addEventListener('click', (e) => {
+                        if (e.target.closest('.card-thumb') || e.target.closest('.icon-btn') || e.target.closest(
+                                'a')) {
+                            return;
+                        }
+                        openDetail(id);
+                    });
+                    // 收藏按钮
+                    card.querySelector('[data-action="star"]')?.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        toggleStar(id);
+                    });
+                    // 分享按钮
+                    card.querySelector('[data-action="share"]')?.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        shareEntry(id);
+                    });
+                    // 复制按钮
+                    card.querySelector('[data-action="copy"]')?.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        copyEntryLink(id);
+                    });
+                });
+            }
+
+            // ─── 详情弹窗 (修复版) ───
+            function openDetail(id) {
+                const e = entries.find(en => en.id === id);
+                if (!e) return;
+
+                const modal = $('#detailContent');
+                const imgsFull = (e.images || []).map(img =>
+                    `<img src="${escapeHtml(img)}" onclick="openLightbox('${escapeHtml(img)}')" loading="lazy">`
+                ).join('');
+                const tagsHtml = (e.tags || []).map(t => `<span class="card-tag">${escapeHtml(t)}</span>`).join('');
+                const date = new Date(e.createdAt).toLocaleString('zh-CN');
+
+                modal.innerHTML = `
+                    <h3>${escapeHtml(e.title)}</h3>
+                    <div class="meta">📅 ${date} · ${escapeHtml(e.category)} · ${e.isStarred ? '⭐已收藏' : ''}</div>
+                    ${tagsHtml ? `<div class="card-tags">${tagsHtml}</div>` : ''}
+                    ${e.content ? `<div class="content-full">${escapeHtml(e.content)}</div>` : ''}
+                    ${imgsFull ? `<div class="images-full">${imgsFull}</div>` : ''}
+                    ${e.summary ? `<div style="background:#fefce8;padding:.7rem;border-radius:.6rem;font-size:.85rem;border-left:3px solid #f59e0b;">💡 摘要：${escapeHtml(e.summary)}</div>` : ''}
+                    <div class="btn-row">
+                        ${e.url ? `<a href="${escapeHtml(e.url)}" target="_blank" rel="noopener" class="link-btn">🔗 打开原链接</a>` : ''}
+                        <button class="btn" onclick="shareEntry('${id}')">↗️ 分享</button>
+                        <button class="btn" onclick="copyContent('${id}')">📋 复制内容</button>
+                        <button class="btn" onclick="downloadEntry('${id}')">💾 保存为文件</button>
+                        <button class="btn" onclick="toggleStar('${id}')">${e.isStarred ? '⭐ 取消收藏' : '☆ 收藏'}</button>
+                        <button class="btn" onclick="editEntry('${id}')">✏️ 编辑</button>
+                        <button class="btn" onclick="deleteEntry('${id}')" style="color:#ef4444;">🗑️ 删除</button>
+                    </div>`;
+                $('#detailModal').classList.add('active');
+            }
+
+            function closeDetail() {
+                $('#detailModal').classList.remove('active');
+            }
+
+            // ─── 条目操作 (全局可用) ───
+            window.toggleStar = function(id) {
+                const e = entries.find(en => en.id === id);
+                if (!e) return;
+                e.isStarred = !e.isStarred;
+                e.updatedAt = new Date().toISOString();
+                saveData();
+                refreshUI();
+                showToast(e.isStarred ? '⭐ 已收藏' : '已取消收藏');
+                if ($('#detailModal').classList.contains('active')) openDetail(id);
+            };
+
+            window.shareEntry = function(id) {
+                const e = entries.find(en => en.id === id);
+                if (!e) return;
+                const text = `${e.title}\n${e.url || ''}\n${e.summary || (e.content || '').slice(0, 100)}`;
+                if (navigator.share) {
+                    navigator.share({ title: e.title, text, url: e.url || '' }).catch(() => {});
+                } else {
+                    copyToClipboard(text);
+                    showToast('📋 已复制');
+                }
+            };
+
+            window.copyEntryLink = function(id) {
+                const e = entries.find(en => en.id === id);
+                if (!e) return;
+                copyToClipboard(e.url || e.content || e.title);
+                showToast('📋 已复制');
+            };
+
+            window.copyContent = function(id) {
+                const e = entries.find(en => en.id === id);
+                if (!e) return;
+                const text =
+                    `标题：${e.title}\n链接：${e.url || '无'}\n内容：\n${e.content || ''}\n摘要：${e.summary || ''}`;
+                copyToClipboard(text);
+                showToast('📋 完整内容已复制');
+            };
+
+            window.downloadEntry = function(id) {
+                const e = entries.find(en => en.id === id);
+                if (!e) return;
+                const text =
+                    `标题：${e.title}\n分类：${e.category}\n链接：${e.url || '无'}\n标签：${(e.tags || []).join(', ')}\n日期：${e.createdAt}\n\n内容：\n${e.content || ''}\n\n摘要：${e.summary || ''}`;
+                const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = `${e.title.slice(0, 20)}.txt`;
+                a.click();
+                URL.revokeObjectURL(a.href);
+                showToast('💾 已保存');
+            };
+
+            window.editEntry = function(id) {
+                const e = entries.find(en => en.id === id);
+                if (!e) return;
+                const newTitle = prompt('编辑标题：', e.title);
+                if (newTitle !== null) e.title = newTitle.trim() || e.title;
+                const newSummary = prompt('编辑摘要：', e.summary || '');
+                if (newSummary !== null) e.summary = newSummary.trim();
+                const newTags = prompt('编辑标签（逗号分隔）：', (e.tags || []).join(', '));
+                if (newTags !== null) e.tags = newTags.split(',').map(t => t.trim()).filter(Boolean);
+                e.updatedAt = new Date().toISOString();
+                saveData();
+                refreshUI();
+                if ($('#detailModal').classList.contains('active')) openDetail(id);
+                showToast('✅ 已更新');
+            };
+
+            window.deleteEntry = function(id) {
+                if (confirm('确定删除这条灵感吗？此操作不可撤销。')) {
+                    entries = entries.filter(e => e.id !== id);
+                    saveData();
+                    closeDetail();
+                    refreshUI();
+                    showToast('🗑️ 已删除');
+                }
+            };
+
+            // ─── 全局功能 ───
+            function extractAllSummaries() {
+                const items = getFiltered();
+                if (!items.length) return showToast('⚠️ 没有可提取的内容');
+                const lines = items.map((e, i) =>
+                    `${i + 1}. **${e.title}** [${e.category}]  ${e.url || ''}\n   💡 ${e.summary || (e.content || '').slice(0, 120) || '（无内容）'}`
+                );
+                const md = '# 📋 灵感提取报告\n\n' + lines.join('\n\n') +
+                    `\n\n---\n*共 ${items.length} 条 · ${new Date().toLocaleString()}*`;
+                copyToClipboard(md);
+                showToast(`📋 已提取 ${items.length} 条摘要到剪贴板`);
+            }
+
+            window.openLightbox = function(src) {
+                const img = $('#lightboxImg');
+                if (img) img.src = src;
+                $('#lightbox').classList.add('active');
+            };
+
+            window.closeLightbox = function() {
+                $('#lightbox').classList.remove('active');
+            };
+
+            function exportData() {
+                const blob = new Blob([JSON.stringify(entries, null, 2)], { type: 'application/json' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = `灵感箱备份_${new Date().toISOString().slice(0, 10)}.json`;
+                a.click();
+                URL.revokeObjectURL(a.href);
+                showToast('⬇️ 导出成功');
+            }
+
+            function importData(file) {
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    try {
+                        const data = JSON.parse(ev.target.result);
+                        if (!Array.isArray(data)) throw new Error('格式错误');
+                        if (confirm(`即将导入 ${data.length} 条记录。\n【确定】合并到现有数据\n【取消】覆盖现有数据`)) {
+                            entries = [...data, ...entries];
+                        } else {
+                            entries = data;
+                        }
+                        saveData();
+                        refreshUI();
+                        showToast('✅ 导入成功');
+                    } catch (ex) {
+                        alert('文件内容不符合要求，请选择JSON备份文件。');
+                    }
+                };
+                reader.readAsText(file, 'UTF-8');
+            }
+
+            function copyToClipboard(text) {
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text).catch(() => fallbackCopy(text));
+                } else {
+                    fallbackCopy(text);
+                }
+            }
+
+            function fallbackCopy(text) {
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                textarea.style.position = 'fixed';
+                textarea.style.left = '-9999px';
+                document.body.appendChild(textarea);
+                textarea.select();
+                try {
+                    document.execCommand('copy');
+                } catch (err) {}
+                document.body.removeChild(textarea);
+            }
+
+            let toastTimer;
+
+            function showToast(msg) {
+                const t = $('#toast');
+                if (!t) return;
+                t.textContent = msg;
+                t.classList.add('show');
+                clearTimeout(toastTimer);
+                toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+            }
+
+            function refreshUI() {
+                renderSidebar();
+                renderGrid();
+            }
+
+            // ─── 事件绑定与初始化 ───
+            function bindEvents() {
+                // 粘贴监听（全局）
+                document.addEventListener('paste', handlePaste);
+
+                // 拖拽区域事件
+                const dropZone = $('#dropZone');
+                if (dropZone) {
+                    dropZone.addEventListener('dragover', (e) => {
+                        e.preventDefault();
+                        dropZone.classList.add('drag-over');
+                    });
+                    dropZone.addEventListener('dragleave', () => {
+                        dropZone.classList.remove('drag-over');
+                    });
+                    dropZone.addEventListener('drop', handleDrop);
+                    // 点击区域也提示粘贴
+                    dropZone.addEventListener('click', () => {
+                        showToast('💡 直接 Ctrl+V 即可粘贴内容');
+                    });
+                }
+
+                // 文件上传监听
+                const fileInput = $('#fileInput');
+                if (fileInput) {
+                    fileInput.addEventListener('change', (e) => {
+                        if (e.target.files.length) {
+                            processFiles(e.target.files);
+                            fileInput.value = ''; // 清空以便重复上传同一文件
+                        }
+                    });
+                }
+
+                // 搜索
+                const searchInput = $('#searchInput');
+                if (searchInput) {
+                    searchInput.addEventListener('input', renderGrid);
+                }
+                $('#btnClearSearch')?.addEventListener('click', () => {
+                    if (searchInput) searchInput.value = '';
+                    renderGrid();
+                });
+
+                // 侧边栏按钮
+                $('#btnStarred')?.addEventListener('click', () => {
+                    currentCategory = 'starred';
+                    currentTag = null;
+                    refreshUI();
+                });
+                $('#btnExtract')?.addEventListener('click', extractAllSummaries);
+                $('#btnExport')?.addEventListener('click', exportData);
+                $('#btnImport')?.addEventListener('click', () => {
+                    const importFileInput = $('#importFile');
+                    if (importFileInput) importFileInput.click();
+                });
+
+                const importFileInput = $('#importFile');
+                if (importFileInput) {
+                    importFileInput.addEventListener('change', (e) => {
+                        if (e.target.files[0]) {
+                            importData(e.target.files[0]);
+                            importFileInput.value = '';
+                        }
+                    });
+                }
+
+                // 弹窗关闭
+                $('#detailModal')?.addEventListener('click', (e) => {
+                    if (e.target === $('#detailModal')) {
+                        closeDetail();
+                    }
+                });
+
+                // 灯箱关闭
+                $('#lightbox')?.addEventListener('click', (e) => {
+                    if (e.target === $('#lightbox') || e.target.classList.contains('close-hint')) {
+                        closeLightbox();
+                    }
+                });
+
+                // ESC 键关闭
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') {
+                        if ($('#lightbox').classList.contains('active')) closeLightbox();
+                        else if ($('#detailModal').classList.contains('active')) closeDetail();
+                    }
+                });
+            }
+
+            // 启动
+            function init() {
+                loadData();
+                bindEvents();
+                refreshUI();
+            }
+
+            // 确保 DOM 加载完成
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', init);
+            } else {
+                init();
+            }
+        })();
+    </script>
+</body>
+</html>
